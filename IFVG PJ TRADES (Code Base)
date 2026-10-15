@@ -1,0 +1,1287 @@
+//@version=6
+indicator("IFVG Model [PJ Trades]", shorttitle = "IFVG Model [PJ Trades]", overlay = true, max_boxes_count = 500, max_lines_count = 500, max_labels_count = 500, max_bars_back = 500)
+
+const string G_SES = "Sessions"
+const string G_KL  = "Key Levels"
+const string G_SW  = "Swing Levels"
+const string G_HTF = "Higher Timeframe FVGs"
+const string G_IF  = "Inversion FVGs"
+const string G_MAC = "Macros"
+const string G_SIG = "Signal Settings"
+const string G_STY = "Style Customization"
+const string G_GAP = "Opening Gaps"
+const string G_SMT = "SMT Divergences"
+const string G_DB  = "Dashboard"
+const string G_AL  = "Alerts"
+
+bool   showSessIn     = input.bool(true, "Show Sessions", group = G_SES, tooltip = "Hides session visuals only. Session highs/lows are always used by the signal logic. Sessions auto-hide on timeframes above 1H.")
+string tzIn           = input.string("America/New_York", "Timezone", group = G_SES)
+bool   s1On           = input.bool(true, "", group = G_SES, inline = "s1")
+string s1Name         = input.string("Asia", "", group = G_SES, inline = "s1")
+string s1Sess         = input.session("2000-0000", "", group = G_SES, inline = "s1")
+color  s1Col          = input.color(color.new(#787B86, 80), "", group = G_SES, inline = "s1")
+bool   s2On           = input.bool(true, "", group = G_SES, inline = "s2")
+string s2Name         = input.string("London", "", group = G_SES, inline = "s2")
+string s2Sess         = input.session("0200-0500", "", group = G_SES, inline = "s2")
+color  s2Col          = input.color(color.new(#F23645, 80), "", group = G_SES, inline = "s2")
+bool   s3On           = input.bool(true, "", group = G_SES, inline = "s3")
+string s3Name         = input.string("NY AM", "", group = G_SES, inline = "s3")
+string s3Sess         = input.session("0930-1215", "", group = G_SES, inline = "s3")
+color  s3Col          = input.color(color.new(#2962FF, 80), "", group = G_SES, inline = "s3")
+bool   s4On           = input.bool(true, "", group = G_SES, inline = "s4")
+string s4Name         = input.string("NY Lunch", "", group = G_SES, inline = "s4")
+string s4Sess         = input.session("1215-1330", "", group = G_SES, inline = "s4")
+color  s4Col          = input.color(color.new(#089981, 80), "", group = G_SES, inline = "s4")
+bool   s5On           = input.bool(true, "", group = G_SES, inline = "s5")
+string s5Name         = input.string("NY PM", "", group = G_SES, inline = "s5")
+string s5Sess         = input.session("1330-1600", "", group = G_SES, inline = "s5")
+color  s5Col          = input.color(color.new(#FF9800, 80), "", group = G_SES, inline = "s5")
+bool   sessLblIn      = input.bool(true, "Session Labels", group = G_SES, inline = "sl")
+bool   sessTimeIn     = input.bool(false, "Time", group = G_SES, inline = "sl")
+bool   sessHLIn       = input.bool(true, "Session Highs/Lows", group = G_SES, inline = "hl")
+string sessStyleIn    = input.string("Solid", "", options = ["Solid", "Dashed", "Dotted"], group = G_SES, inline = "hl")
+int    sessWidthIn    = input.int(1, "Width", minval = 1, maxval = 5, group = G_SES, inline = "hl")
+color  sessLblColIn   = input.color(#787B86, "High/Low Label Color", group = G_SES, inline = "hll")
+string sessLblSizeIn  = input.string("Small", "Size", options = ["Auto", "Tiny", "Small", "Normal", "Large", "Huge"], group = G_SES, inline = "hll")
+string sessLblPosIn   = input.string("Right", "High/Low Label Position", options = ["Left", "Center", "Right"], group = G_SES)
+bool   sessHideSwIn   = input.bool(true, "Hide Labels After Sweep", group = G_SES)
+bool   sessExtIn      = input.bool(false, "Extend Levels", group = G_SES, inline = "se")
+int    sessExtBarsIn  = input.int(10, "Bars", minval = 1, maxval = 500, group = G_SES, inline = "se")
+int    sessLastIn     = input.int(3, "Show Last", minval = 1, maxval = 20, group = G_SES)
+
+bool   kDOIn   = input.bool(true, "Daily Open", group = G_KL, inline = "k1")
+color  kDOCol  = input.color(#787B86, "", group = G_KL, inline = "k1")
+bool   kPDHIn  = input.bool(true, "Previous Day High", group = G_KL, inline = "k2")
+color  kPDHCol = input.color(#F23645, "", group = G_KL, inline = "k2")
+bool   kPDLIn  = input.bool(true, "Previous Day Low", group = G_KL, inline = "k3")
+color  kPDLCol = input.color(#089981, "", group = G_KL, inline = "k3")
+bool   kWOIn   = input.bool(false, "Weekly Open", group = G_KL, inline = "k4")
+color  kWOCol  = input.color(#9598A1, "", group = G_KL, inline = "k4")
+bool   kPWHIn  = input.bool(true, "Previous Week High", group = G_KL, inline = "k5")
+color  kPWHCol = input.color(#FF5252, "", group = G_KL, inline = "k5")
+bool   kPWLIn  = input.bool(true, "Previous Week Low", group = G_KL, inline = "k6")
+color  kPWLCol = input.color(#22AB94, "", group = G_KL, inline = "k6")
+bool   kMOIn   = input.bool(false, "Monthly Open", group = G_KL, inline = "k7")
+color  kMOCol  = input.color(#B2B5BE, "", group = G_KL, inline = "k7")
+bool   kPMHIn  = input.bool(false, "Previous Month High", group = G_KL, inline = "k8")
+color  kPMHCol = input.color(#E91E63, "", group = G_KL, inline = "k8")
+bool   kPMLIn  = input.bool(false, "Previous Month Low", group = G_KL, inline = "k9")
+color  kPMLCol = input.color(#00BCD4, "", group = G_KL, inline = "k9")
+bool   kMidIn  = input.bool(false, "Midnight Open", group = G_KL, inline = "k10")
+color  kMidCol = input.color(#2962FF, "", group = G_KL, inline = "k10")
+bool   k830In  = input.bool(false, "08:30 Open", group = G_KL, inline = "k11")
+color  k830Col = input.color(#AB47BC, "", group = G_KL, inline = "k11")
+bool   kLblIn     = input.bool(true, "Show Labels", group = G_KL, inline = "kl")
+string kLblSizeIn = input.string("Small", "Size", options = ["Auto", "Tiny", "Small", "Normal", "Large", "Huge"], group = G_KL, inline = "kl")
+string kLblPosIn  = input.string("Right", "Label Position", options = ["Left", "Right"], group = G_KL)
+string kStyleIn   = input.string("Dashed", "Line Style", options = ["Solid", "Dashed", "Dotted"], group = G_KL)
+bool   kExtIn     = input.bool(true, "Extend Levels", group = G_KL, inline = "ke")
+int    kExtBarsIn = input.int(10, "Bars", minval = 1, maxval = 500, group = G_KL, inline = "ke")
+
+bool   swShowIn     = input.bool(true, "Show Swing Levels", group = G_SW)
+color  swActiveCol  = input.color(#787B86, "Active Levels", group = G_SW, inline = "sw")
+color  swSweptCol   = input.color(color.new(#787B86, 65), "Swept Levels", group = G_SW, inline = "sw")
+int    swNearestIn  = input.int(2, "Show Nearest", minval = 1, maxval = 10, group = G_SW)
+
+bool   hfAOn       = input.bool(true, "", group = G_HTF, inline = "ha")
+string hfATf       = input.timeframe("15", "", group = G_HTF, inline = "ha")
+color  hfABull     = input.color(color.new(#089981, 85), "", group = G_HTF, inline = "ha")
+color  hfABear     = input.color(color.new(#F23645, 85), "", group = G_HTF, inline = "ha")
+bool   hfBOn       = input.bool(true, "", group = G_HTF, inline = "hb")
+string hfBTf       = input.timeframe("60", "", group = G_HTF, inline = "hb")
+color  hfBBull     = input.color(color.new(#089981, 85), "", group = G_HTF, inline = "hb")
+color  hfBBear     = input.color(color.new(#F23645, 85), "", group = G_HTF, inline = "hb")
+bool   hfCOn       = input.bool(false, "", group = G_HTF, inline = "hc")
+string hfCTf       = input.timeframe("240", "", group = G_HTF, inline = "hc")
+color  hfCBull     = input.color(color.new(#089981, 85), "", group = G_HTF, inline = "hc")
+color  hfCBear     = input.color(color.new(#F23645, 85), "", group = G_HTF, inline = "hc")
+bool   hfPlotIn    = input.bool(true, "Plot HTF FVGs", group = G_HTF, tooltip = "When disabled the zones are hidden, the logic stays active for signals.")
+bool   hfMidIn     = input.bool(true, "Midline", group = G_HTF, inline = "hm")
+string hfMidStyle  = input.string("Dashed", "", options = ["Solid", "Dashed", "Dotted"], group = G_HTF, inline = "hm")
+color  hfMidCol    = input.color(#787B86, "", group = G_HTF, inline = "hm")
+bool   hfLblIn     = input.bool(true, "Labels", group = G_HTF, inline = "hl")
+color  hfLblCol    = input.color(#787B86, "", group = G_HTF, inline = "hl")
+int    hfNearestIn = input.int(2, "Show Nearest", minval = 1, maxval = 10, group = G_HTF)
+
+bool   ifShowIn    = input.bool(true, "Show IFVGs", group = G_IF)
+color  ifBullCol   = input.color(color.new(#089981, 80), "Bullish", group = G_IF, inline = "ic")
+color  ifBearCol   = input.color(color.new(#F23645, 80), "Bearish", group = G_IF, inline = "ic")
+bool   ifMidIn     = input.bool(false, "Midline", group = G_IF, inline = "im")
+string ifMidStyle  = input.string("Dashed", "", options = ["Solid", "Dashed", "Dotted"], group = G_IF, inline = "im")
+color  ifMidCol    = input.color(#787B86, "", group = G_IF, inline = "im")
+
+bool   m1On   = input.bool(true, "", group = G_MAC, inline = "m1")
+string m1Name = input.string("Macro 1", "", group = G_MAC, inline = "m1")
+string m1Sess = input.session("0950-1010", "", group = G_MAC, inline = "m1")
+color  m1Col  = input.color(color.new(#9598A1, 85), "", group = G_MAC, inline = "m1")
+bool   m2On   = input.bool(true, "", group = G_MAC, inline = "m2")
+string m2Name = input.string("Macro 2", "", group = G_MAC, inline = "m2")
+string m2Sess = input.session("1050-1110", "", group = G_MAC, inline = "m2")
+color  m2Col  = input.color(color.new(#9598A1, 85), "", group = G_MAC, inline = "m2")
+bool   m3On   = input.bool(true, "", group = G_MAC, inline = "m3")
+string m3Name = input.string("Macro 3", "", group = G_MAC, inline = "m3")
+string m3Sess = input.session("1150-1210", "", group = G_MAC, inline = "m3")
+color  m3Col  = input.color(color.new(#9598A1, 85), "", group = G_MAC, inline = "m3")
+bool   m4On   = input.bool(true, "", group = G_MAC, inline = "m4")
+string m4Name = input.string("Macro 4", "", group = G_MAC, inline = "m4")
+string m4Sess = input.session("1250-1310", "", group = G_MAC, inline = "m4")
+color  m4Col  = input.color(color.new(#9598A1, 85), "", group = G_MAC, inline = "m4")
+bool   m5On   = input.bool(true, "", group = G_MAC, inline = "m5")
+string m5Name = input.string("Macro 5", "", group = G_MAC, inline = "m5")
+string m5Sess = input.session("1350-1410", "", group = G_MAC, inline = "m5")
+color  m5Col  = input.color(color.new(#9598A1, 85), "", group = G_MAC, inline = "m5")
+bool   macZonesIn   = input.bool(true, "Show Zones", group = G_MAC)
+bool   macLblIn     = input.bool(true, "Labels", group = G_MAC, inline = "ml")
+color  macLblCol    = input.color(#9598A1, "", group = G_MAC, inline = "ml")
+string macLblSizeIn = input.string("Tiny", "", options = ["Auto", "Tiny", "Small", "Normal", "Large", "Huge"], group = G_MAC, inline = "ml")
+bool   macLinesIn   = input.bool(true, "Macro Lines", group = G_MAC, inline = "mln")
+string macLineStyle = input.string("Solid", "Macro Line", options = ["Solid", "Dashed", "Dotted"], group = G_MAC, inline = "mln")
+string macSEStyle   = input.string("Dotted", "Start/End Lines", options = ["Solid", "Dashed", "Dotted"], group = G_MAC)
+
+string liqUsedIn     = input.string("Both", "Liquidity Levels Used", options = ["Swing Points", "Session Highs/Lows", "Both"], group = G_SIG)
+string biasModeIn    = input.string("Manual", "Bias", options = ["Manual", "Automatic"], group = G_SIG, inline = "bias")
+string manualBiasIn  = input.string("Both", "", options = ["Bullish", "Bearish", "Both"], group = G_SIG, inline = "bias")
+float  sensIn        = input.float(0.1, "IFVG Sensitivity", minval = 0.0, step = 0.05, group = G_SIG, tooltip = "Minimum FVG size (ATR multiple) to qualify as an Inversion FVG. Higher values allow only larger gaps.")
+bool   firstIfvgIn   = input.bool(false, "Use First Presented IFVG", group = G_SIG)
+bool   onlyTradesIn  = input.bool(false, "Only Take Trades", group = G_SIG, inline = "ot", tooltip = "Uses the chart's native time zone.")
+string tradeWinIn    = input.session("0930-1200", "", group = G_SIG, inline = "ot")
+bool   useMacroIn    = input.bool(false, "Use Macro Times", group = G_SIG, tooltip = "Signals only trigger during enabled Macro Time Windows.")
+float  minRRIn       = input.float(1.0, "Minimum R:R", minval = 0.0, step = 0.1, group = G_SIG)
+string ratingMinIn   = input.string("A", "Signal Rating Minimum", options = ["A", "A+", "A++"], group = G_SIG)
+bool   trailingIn    = input.bool(false, "Trailing Stop-Loss", group = G_SIG, tooltip = "Once Breakeven is reached the stop-loss moves to Entry. After TP 1 is hit the stop-loss moves to Breakeven.")
+
+bool   showLongIn   = input.bool(true, "Long Signals", group = G_STY, inline = "ls")
+color  longCol      = input.color(#089981, "", group = G_STY, inline = "ls")
+color  longTxtCol   = input.color(#FFFFFF, "Text", group = G_STY, inline = "ls")
+string longSizeIn   = input.string("Small", "", options = ["Auto", "Tiny", "Small", "Normal", "Large", "Huge"], group = G_STY, inline = "ls")
+bool   showShortIn  = input.bool(true, "Short Signals", group = G_STY, inline = "ss")
+color  shortCol     = input.color(#F23645, "", group = G_STY, inline = "ss")
+color  shortTxtCol  = input.color(#FFFFFF, "Text", group = G_STY, inline = "ss")
+string shortSizeIn  = input.string("Small", "", options = ["Auto", "Tiny", "Small", "Normal", "Large", "Huge"], group = G_STY, inline = "ss")
+bool   entryLnIn    = input.bool(true, "Entry Line", group = G_STY, inline = "le")
+color  entryCol     = input.color(#2962FF, "", group = G_STY, inline = "le")
+bool   entryPxIn    = input.bool(true, "Price", group = G_STY, inline = "le")
+bool   slLnIn       = input.bool(true, "Stop Loss Line", group = G_STY, inline = "lsl")
+color  slCol        = input.color(#F23645, "", group = G_STY, inline = "lsl")
+bool   slPxIn       = input.bool(true, "Price", group = G_STY, inline = "lsl")
+bool   beLnIn       = input.bool(true, "Breakeven Line", group = G_STY, inline = "lbe")
+color  beCol        = input.color(#4CAF50, "", group = G_STY, inline = "lbe")
+bool   bePxIn       = input.bool(true, "Price", group = G_STY, inline = "lbe")
+bool   tpLnIn       = input.bool(true, "Take Profit 1 & 2 Lines", group = G_STY, inline = "ltp")
+color  tp1Col       = input.color(#4CAF50, "", group = G_STY, inline = "ltp")
+color  tp2Col       = input.color(#4CAF50, "", group = G_STY, inline = "ltp")
+bool   tpPxIn       = input.bool(true, "Price", group = G_STY, inline = "ltp")
+bool   showPtsIn    = input.bool(false, "Show Points", group = G_STY)
+
+bool   ndogIn     = input.bool(false, "Show New Day Opening Gap", group = G_GAP)
+color  ndogBull   = input.color(color.new(#089981, 85), "Bullish NDOG", group = G_GAP, inline = "nd")
+color  ndogBear   = input.color(color.new(#F23645, 85), "Bearish NDOG", group = G_GAP, inline = "nd")
+bool   ndogMidIn  = input.bool(true, "NDOG Midline", group = G_GAP, inline = "ndm")
+bool   ndogLblIn  = input.bool(true, "Label", group = G_GAP, inline = "ndm")
+bool   nwogIn     = input.bool(false, "Show New Week Opening Gap", group = G_GAP)
+color  nwogBull   = input.color(color.new(#2962FF, 85), "Bullish NWOG", group = G_GAP, inline = "nw")
+color  nwogBear   = input.color(color.new(#FF9800, 85), "Bearish NWOG", group = G_GAP, inline = "nw")
+bool   nwogMidIn  = input.bool(true, "NWOG Midline", group = G_GAP, inline = "nwm")
+bool   nwogLblIn  = input.bool(true, "Label", group = G_GAP, inline = "nwm")
+color  gapTxtCol  = input.color(#9598A1, "Gap Text / Midline", group = G_GAP)
+
+bool   smtIn       = input.bool(true, "Show SMT Divergences", group = G_SMT)
+int    smtLenIn    = input.int(3, "Length", minval = 1, maxval = 20, group = G_SMT)
+int    smtDivLenIn = input.int(3, "Divergence Length", minval = 0, maxval = 50, group = G_SMT)
+int    smtLastIn   = input.int(3, "Show Last", minval = 1, maxval = 20, group = G_SMT)
+string smtTickerIn = input.symbol("CME_MINI:ES1!", "Divergence Ticker", group = G_SMT)
+color  smtCol      = input.color(#D1D4DC, "Line / Text Color", group = G_SMT)
+
+bool   dbIn        = input.bool(true, "Show Dashboard", group = G_DB)
+string dbSizeIn    = input.string("Small", "Dashboard Size", options = ["Tiny", "Small", "Normal", "Large"], group = G_DB)
+string dbPosIn     = input.string("Top Right", "Dashboard Position", options = ["Top Right", "Middle Right", "Bottom Right", "Top Left", "Middle Left", "Bottom Left", "Top Center", "Bottom Center"], group = G_DB)
+string dbThemeIn   = input.string("Dark", "Mode", options = ["Dark", "Light"], group = G_DB)
+color  dbStatsCol  = input.color(#FFFFFF, "Trade Stats Text Color", group = G_DB)
+bool   dbRatingIn  = input.bool(true, "Setup Rating", group = G_DB, inline = "d1")
+bool   dbEntryIn   = input.bool(true, "Entry", group = G_DB, inline = "d1")
+bool   dbSLIn      = input.bool(true, "Stop-Loss", group = G_DB, inline = "d1")
+bool   dbBEIn      = input.bool(true, "Breakeven", group = G_DB, inline = "d2")
+bool   dbTP1In     = input.bool(true, "Take Profit 1", group = G_DB, inline = "d2")
+bool   dbTP2In     = input.bool(true, "Take Profit 2", group = G_DB, inline = "d2")
+bool   dbBiasIn    = input.bool(true, "Bias", group = G_DB, inline = "d3")
+bool   dbSweepIn   = input.bool(true, "Liquidity Sweep", group = G_DB, inline = "d3")
+bool   dbHtfIn     = input.bool(true, "HTF FVG", group = G_DB, inline = "d3")
+bool   dbVIn       = input.bool(true, "V Shape Recovery", group = G_DB, inline = "d4")
+bool   dbIfvgIn    = input.bool(true, "Inversion FVG", group = G_DB, inline = "d4")
+bool   dbDolIn     = input.bool(true, "Clear Opposite DOL", group = G_DB, inline = "d5")
+bool   dbSmtIn     = input.bool(true, "SMT Divergence", group = G_DB, inline = "d5")
+bool   dbStatsIn   = input.bool(true, "Trade Stats", group = G_DB)
+
+bool alLongIn   = input.bool(true, "Long Signal", group = G_AL, inline = "a1")
+bool alShortIn  = input.bool(true, "Short Signal", group = G_AL, inline = "a1")
+bool alBEIn     = input.bool(true, "Breakeven Hit", group = G_AL, inline = "a2")
+bool alTP1In    = input.bool(true, "TP1 Hit", group = G_AL, inline = "a2")
+bool alTP2In    = input.bool(true, "TP2 Hit", group = G_AL, inline = "a3")
+bool alSLIn     = input.bool(true, "Stop-Loss Hit", group = G_AL, inline = "a3")
+bool alSweepIn  = input.bool(false, "Liquidity Sweep Detected", group = G_AL)
+bool alSmtIn    = input.bool(false, "SMT Divergence Detected", group = G_AL)
+bool alTrEntIn  = input.bool(true, "Trailing SL Moved To Entry", group = G_AL)
+bool alTrBEIn   = input.bool(true, "Trailing SL Moved To BE", group = G_AL)
+
+const string NAME        = "IFVG Model [PJ Trades]"
+const int    LINE_LEN    = 20
+const int    V_WINDOW    = 3
+const float  V_BODY_ATR  = 0.6
+const float  V_BODY_PCT  = 0.5
+const int    TAP_WINDOW  = 2
+const int    SETUP_MAX   = 30
+const int    LEG_LOOK    = 30
+const int    MAX_LVL     = 150
+const int    MAX_FVG     = 60
+const int    MAX_HTF     = 90
+const int    STATE_BARS  = 20
+const int    MAX_SIG     = 100
+const int    MAX_IFVG    = 40
+const int    MAX_MAC     = 25
+const string CHECK       = "✅"
+const string CROSS       = "❌"
+
+type Level
+    float  price
+    int    bar
+    string name
+    int    kind
+    bool   isHigh
+    bool   swept = false
+    int    sweptBar
+    bool   dead  = false
+    line   ln
+    label  lb
+
+type Fvg
+    float top
+    float bot
+    int   bar
+    bool  inverted = false
+
+type HFvg
+    float  top
+    float  bot
+    bool   bull
+    string tfLbl
+    int    t
+    color  col
+
+type SessDraw
+    box   bx
+    line  hl
+    line  ll
+    label hb
+    label lbl
+
+type Sess
+    string          name
+    string          sess
+    color           col
+    bool            show
+    bool            active = false
+    float           hi
+    float           lo
+    int             hiBar
+    int             loBar
+    array<SessDraw> draws
+    SessDraw        cur
+
+type Macro
+    string title
+    string sess
+    color  col
+    bool   on
+    bool   active = false
+    float  hi
+    float  lo
+    int    startBar
+    float  startHigh
+    box    bx
+    label  lb
+
+type Setup
+    int    state = 0
+    float  ext
+    float  extMid
+    int    extBar
+    int    legStart
+    int    count = 0
+    string names = ""
+    bool   tap   = false
+    string tapTf = ""
+    int    sweepBar
+
+type Trade
+    bool   long
+    int    bar
+    string rating
+    int    rank
+    float  entry
+    float  sl
+    float  be
+    float  tp1
+    float  tp2
+    float  curSL
+    bool   beHit  = false
+    bool   tp1Hit = false
+    bool   open   = true
+    string tip
+    line   lE
+    line   lS
+    line   lB
+    line   l1
+    line   l2
+    label  bE
+    label  bS
+    label  bB
+    label  b1
+    label  b2
+    label  sig
+
+type Gap
+    box   bx
+    line  md
+    label lb
+    float top
+    float bot
+    bool  bull
+
+var array<Level> liqHighs = array.new<Level>()
+var array<Level> liqLows  = array.new<Level>()
+var array<Fvg>   bullFvgs = array.new<Fvg>()
+var array<Fvg>   bearFvgs = array.new<Fvg>()
+var array<HFvg>  htfFvgs  = array.new<HFvg>()
+array<string>    alertList = array.new<string>()
+
+lineStyle(string s) =>
+    s == "Dashed" ? line.style_dashed : s == "Dotted" ? line.style_dotted : line.style_solid
+
+txtSize(string s) =>
+    switch s
+        "Auto"   => size.auto
+        "Tiny"   => size.tiny
+        "Normal" => size.normal
+        "Large"  => size.large
+        "Huge"   => size.huge
+        => size.small
+
+fmt(float x) =>
+    str.tostring(x, format.mintick)
+
+timeTxt(string s) =>
+    str.substring(s, 0, 2) + ":" + str.substring(s, 2, 4) + "-" + str.substring(s, 5, 7) + ":" + str.substring(s, 7, 9)
+
+tfTxt(string tf) =>
+    int sec = timeframe.in_seconds(tf)
+    sec < 3600 ? str.tostring(math.round(sec / 60)) + "M" : sec < 86400 ? str.tostring(math.round(sec / 3600)) + "H" : sec < 604800 ? str.tostring(math.round(sec / 86400)) + "D" : str.tostring(math.round(sec / 604800)) + "W"
+
+pushAlert(bool on, string msg) =>
+    if on and barstate.isrealtime
+        alertList.push(NAME + " | " + syminfo.ticker + " (" + timeframe.period + ") | " + msg)
+
+kindAllowed(int k) =>
+    k == 0 ? liqUsedIn != "Session Highs/Lows" : liqUsedIn != "Swing Points"
+
+addLevel(array<Level> arr, Level lv) =>
+    arr.push(lv)
+    if arr.size() > MAX_LVL
+        Level old = arr.shift()
+        if old.kind == 2
+            line.delete(old.ln)
+            label.delete(old.lb)
+
+delSessDraw(SessDraw d) =>
+    box.delete(d.bx)
+    line.delete(d.hl)
+    line.delete(d.ll)
+    label.delete(d.hb)
+    label.delete(d.lbl)
+
+drawKey(Level lv, color col) =>
+    int x2 = bar_index + (kExtIn ? kExtBarsIn : 0)
+    lv.ln := line.new(lv.bar, lv.price, x2, lv.price, color = col, style = lineStyle(kStyleIn), width = 1)
+    if kLblIn
+        lv.lb := label.new(kLblPosIn == "Right" ? x2 : lv.bar, lv.price, lv.name, style = kLblPosIn == "Right" ? label.style_label_left : label.style_label_right, color = color.new(col, 100), textcolor = col, size = txtSize(kLblSizeIn))
+
+newKey(Level old, float price, int bar, string name, bool isHigh, bool show, color col, bool isLiq) =>
+    if not na(old)
+        old.dead := true
+        line.delete(old.ln)
+        label.delete(old.lb)
+    Level lv = Level.new(price = price, bar = bar, name = name, kind = isLiq ? 2 : 3, isHigh = isHigh)
+    if show and not na(price)
+        drawKey(lv, col)
+    if isLiq and not na(price)
+        addLevel(isHigh ? liqHighs : liqLows, lv)
+    lv
+
+legOrigin(bool downLeg) =>
+    int   best = 0
+    float v    = downLeg ? high : low
+    int   n    = math.min(LEG_LOOK, bar_index)
+    if n >= 1
+        for i = 1 to n
+            if downLeg ? high[i] > v : low[i] < v
+                v    := downLeg ? high[i] : low[i]
+                best := i
+    bar_index - best
+
+tapHtf(bool bull) =>
+    bool   hit = false
+    string tf  = ""
+    for f in htfFvgs
+        if f.bull == bull and low <= f.top and high >= f.bot
+            hit := true
+            tf  := f.tfLbl
+            break
+    [hit, tf]
+
+insideHtf() =>
+    bool hit = false
+    for f in htfFvgs
+        if close <= f.top and close >= f.bot
+            hit := true
+            break
+    hit
+
+findIfvg(array<Fvg> arr, bool long, int legStart, int extBar) =>
+    Fvg pick = na
+    if firstIfvgIn
+        Fvg first = na
+        for f in arr
+            if f.bar >= legStart and f.bar <= extBar
+                if na(first) or f.bar < first.bar
+                    first := f
+        if not na(first)
+            if not first.inverted and (long ? close > first.top : close < first.bot)
+                pick := first
+    else
+        for f in arr
+            if not f.inverted and f.bar >= legStart and (long ? close > f.top : close < f.bot)
+                pick := f
+                break
+    pick
+
+tradeLevels(bool long, float entry, float ext) =>
+    float sl = na
+    array<float> tg = array.new<float>()
+    for lv in (long ? liqLows : liqHighs)
+        if lv.kind == 0 and not lv.swept and (long ? lv.price < entry : lv.price > entry)
+            sl := na(sl) ? lv.price : long ? math.max(sl, lv.price) : math.min(sl, lv.price)
+    for lv in (long ? liqHighs : liqLows)
+        if lv.kind == 0 and not lv.swept and (long ? lv.price > entry : lv.price < entry)
+            tg.push(lv.price)
+    tg.sort(long ? order.ascending : order.descending)
+    if na(sl)
+        sl := ext
+    array<float> t = array.new<float>()
+    for p in tg
+        if t.size() == 0 or p != t.last()
+            t.push(p)
+        if t.size() == 3
+            break
+    float risk = math.abs(entry - sl)
+    float dir  = long ? 1.0 : -1.0
+    float be   = t.size() > 0 ? t.get(0) : entry + dir * risk
+    float tp1  = t.size() > 1 ? t.get(1) : entry + dir * 2 * risk
+    float tp2  = t.size() > 2 ? t.get(2) : entry + dir * 3 * risk
+    [sl, be, tp1, tp2]
+
+lvlText(string name, float price, float entry, bool showPx, bool hit) =>
+    name + (showPx ? ": " + fmt(price) : "") + (showPtsIn and name != "Entry" ? " (" + fmt(math.abs(price - entry)) + " pts)" : "") + (hit ? " " + CHECK : "")
+
+mkLine(float price, color col) =>
+    line.new(bar_index, price, bar_index + LINE_LEN, price, color = col, width = 1)
+
+mkLbl(string txt, float price, color col) =>
+    label.new(bar_index + LINE_LEN, price, txt, style = label.style_label_left, color = color.new(col, 100), textcolor = col, size = size.small)
+
+closeLines(Trade t) =>
+    line.delete(t.lE)
+    line.delete(t.lS)
+    line.delete(t.lB)
+    line.delete(t.l1)
+    line.delete(t.l2)
+    label.delete(t.bE)
+    label.delete(t.bS)
+    label.delete(t.bB)
+    label.delete(t.b1)
+    label.delete(t.b2)
+
+closeTrade(Trade t) =>
+    closeLines(t)
+    t.open := false
+
+newGap(float top, float bot, bool bull, color cBull, color cBear, bool mid, bool lbl, string name) =>
+    Gap g = Gap.new(top = top, bot = bot, bull = bull)
+    g.bx := box.new(bar_index - 1, top, bar_index + 5, bot, border_color = color.new(#000000, 100), bgcolor = bull ? cBull : cBear)
+    if mid
+        g.md := line.new(bar_index - 1, (top + bot) / 2, bar_index + 5, (top + bot) / 2, color = gapTxtCol, style = line.style_dotted)
+    if lbl
+        g.lb := label.new(bar_index + 5, (top + bot) / 2, name, style = label.style_label_left, color = color.new(#000000, 100), textcolor = gapTxtCol, size = size.tiny)
+    g
+
+delGap(Gap g) =>
+    if not na(g)
+        box.delete(g.bx)
+        line.delete(g.md)
+        label.delete(g.lb)
+
+updGap(Gap g) =>
+    bool filled = g.bull ? low <= g.bot : high >= g.top
+    if not filled
+        g.bx.set_right(bar_index + 5)
+        if not na(g.md)
+            g.md.set_x2(bar_index + 5)
+        if not na(g.lb)
+            g.lb.set_x(bar_index + 5)
+    filled
+
+float atr = nz(ta.atr(14))
+
+bool in1 = not na(time(timeframe.period, s1Sess, tzIn))
+bool in2 = not na(time(timeframe.period, s2Sess, tzIn))
+bool in3 = not na(time(timeframe.period, s3Sess, tzIn))
+bool in4 = not na(time(timeframe.period, s4Sess, tzIn))
+bool in5 = not na(time(timeframe.period, s5Sess, tzIn))
+array<bool> sessIn = array.from(in1, in2, in3, in4, in5)
+bool mIn1 = not na(time(timeframe.period, m1Sess, tzIn))
+bool mIn2 = not na(time(timeframe.period, m2Sess, tzIn))
+bool mIn3 = not na(time(timeframe.period, m3Sess, tzIn))
+bool mIn4 = not na(time(timeframe.period, m4Sess, tzIn))
+bool mIn5 = not na(time(timeframe.period, m5Sess, tzIn))
+array<bool> macIn = array.from(mIn1, mIn2, mIn3, mIn4, mIn5)
+bool inMacro  = (m1On and mIn1) or (m2On and mIn2) or (m3On and mIn3) or (m4On and mIn4) or (m5On and mIn5)
+bool inWindow = not onlyTradesIn or not na(time(timeframe.period, tradeWinIn))
+
+bool intraday   = timeframe.isintraday
+bool sessVis    = showSessIn and intraday and timeframe.in_seconds() <= 3600
+bool macVis     = intraday and timeframe.in_seconds() <= 3600
+
+htfReq(string tf) =>
+    request.security(syminfo.tickerid, tf, [low[1] > high[3], low[1], high[3], high[1] < low[3], low[3], high[1], time[3]], lookahead = barmerge.lookahead_on)
+
+[aBn, aBt, aBb, aSn, aSt, aSb, aT] = htfReq(hfATf)
+[bBn, bBt, bBb, bSn, bSt, bSb, bT] = htfReq(hfBTf)
+[cBn, cBt, cBb, cSn, cSt, cSb, cT] = htfReq(hfCTf)
+bool aChg = timeframe.change(hfATf)
+bool bChg = timeframe.change(hfBTf)
+bool cChg = timeframe.change(hfCTf)
+bool aOk  = hfAOn and timeframe.in_seconds(hfATf) >= timeframe.in_seconds()
+bool bOk  = hfBOn and timeframe.in_seconds(hfBTf) >= timeframe.in_seconds()
+bool cOk  = hfCOn and timeframe.in_seconds(hfCTf) >= timeframe.in_seconds()
+string aLbl = tfTxt(hfATf)
+string bLbl = tfTxt(hfBTf)
+string cLbl = tfTxt(hfCTf)
+
+[h1PH, h1PL] = request.security(syminfo.tickerid, "60", [high[1], low[1]], lookahead = barmerge.lookahead_on)
+[h4PH, h4PL] = request.security(syminfo.tickerid, "240", [high[1], low[1]], lookahead = barmerge.lookahead_on)
+
+[smtH, smtL] = request.security(smtTickerIn, timeframe.period, [high, low], ignore_invalid_symbol = true)
+
+var array<Sess> sessions = array.from(Sess.new(name = s1Name, sess = s1Sess, col = s1Col, show = s1On, draws = array.new<SessDraw>()), Sess.new(name = s2Name, sess = s2Sess, col = s2Col, show = s2On, draws = array.new<SessDraw>()), Sess.new(name = s3Name, sess = s3Sess, col = s3Col, show = s3On, draws = array.new<SessDraw>()), Sess.new(name = s4Name, sess = s4Sess, col = s4Col, show = s4On, draws = array.new<SessDraw>()), Sess.new(name = s5Name, sess = s5Sess, col = s5Col, show = s5On, draws = array.new<SessDraw>()))
+var array<Macro> macros = array.from(Macro.new(title = m1Name, sess = m1Sess, col = m1Col, on = m1On), Macro.new(title = m2Name, sess = m2Sess, col = m2Col, on = m2On), Macro.new(title = m3Name, sess = m3Sess, col = m3Col, on = m3On), Macro.new(title = m4Name, sess = m4Sess, col = m4Col, on = m4On), Macro.new(title = m5Name, sess = m5Sess, col = m5Col, on = m5On))
+var float lastSessHi = na
+var float lastSessLo = na
+
+for [i, s] in sessions
+    bool nowIn = sessIn.get(i)
+    bool vis   = sessVis and s.show
+    if nowIn and not s.active
+        s.active := true
+        s.hi     := high
+        s.lo     := low
+        s.hiBar  := bar_index
+        s.loBar  := bar_index
+        s.cur    := na
+        if vis
+            string txt = sessLblIn ? s.name + (sessTimeIn ? " (" + timeTxt(s.sess) + ")" : "") : ""
+            SessDraw d = SessDraw.new(bx = box.new(bar_index, high, bar_index, low, border_color = color.new(s.col, 50), border_style = line.style_dashed, bgcolor = s.col, text = txt, text_size = size.small, text_color = color.new(s.col, 20), text_valign = text.align_top, text_halign = text.align_center))
+            s.cur := d
+            s.draws.push(d)
+            while s.draws.size() > sessLastIn
+                delSessDraw(s.draws.shift())
+    else if nowIn and s.active
+        if high > s.hi
+            s.hi    := high
+            s.hiBar := bar_index
+        if low < s.lo
+            s.lo    := low
+            s.loBar := bar_index
+        if not na(s.cur)
+            SessDraw d = s.cur
+            d.bx.set_top(s.hi)
+            d.bx.set_bottom(s.lo)
+            d.bx.set_right(bar_index)
+    else if not nowIn and s.active
+        s.active   := false
+        lastSessHi := s.hi
+        lastSessLo := s.lo
+        Level lh = Level.new(price = s.hi, bar = s.hiBar, name = s.name + " High", kind = 1, isHigh = true)
+        Level ll = Level.new(price = s.lo, bar = s.loBar, name = s.name + " Low", kind = 1, isHigh = false)
+        if vis and sessHLIn and not na(s.cur)
+            SessDraw d = s.cur
+            int x2  = bar_index - 1 + (sessExtIn ? sessExtBarsIn : 0)
+            color lc = color.new(s.col, 0)
+            d.hl := line.new(s.hiBar, s.hi, x2, s.hi, color = lc, style = lineStyle(sessStyleIn), width = sessWidthIn)
+            d.ll := line.new(s.loBar, s.lo, x2, s.lo, color = lc, style = lineStyle(sessStyleIn), width = sessWidthIn)
+            int hx = sessLblPosIn == "Left" ? s.hiBar : sessLblPosIn == "Center" ? int((s.hiBar + x2) / 2) : x2
+            int lx = sessLblPosIn == "Left" ? s.loBar : sessLblPosIn == "Center" ? int((s.loBar + x2) / 2) : x2
+            d.hb  := label.new(hx, s.hi, s.name + " High", style = label.style_label_down, color = color.new(#000000, 100), textcolor = sessLblColIn, size = txtSize(sessLblSizeIn))
+            d.lbl := label.new(lx, s.lo, s.name + " Low", style = label.style_label_up, color = color.new(#000000, 100), textcolor = sessLblColIn, size = txtSize(sessLblSizeIn))
+            lh.lb := d.hb
+            ll.lb := d.lbl
+        addLevel(liqHighs, lh)
+        addLevel(liqLows, ll)
+
+bool newDay   = timeframe.change("D")
+bool newWeek  = timeframe.change("W")
+bool newMonth = timeframe.change("M")
+var float dHi = na, var float dLo = na, var int dHiB = na, var int dLoB = na
+var float wHi = na, var float wLo = na, var int wHiB = na, var int wLoB = na
+var float mHi = na, var float mLo = na, var int mHiB = na, var int mLoB = na
+var Level lvDO  = na
+var Level lvPDH = na
+var Level lvPDL = na
+var Level lvWO  = na
+var Level lvPWH = na
+var Level lvPWL = na
+var Level lvMO  = na
+var Level lvPMH = na
+var Level lvPML = na
+var Level lvMid = na
+var Level lv830 = na
+
+if newDay and bar_index > 0
+    lvDO  := newKey(lvDO, open, bar_index, "Daily Open", true, kDOIn, kDOCol, false)
+    lvPDH := newKey(lvPDH, dHi, dHiB, "PDH", true, kPDHIn, kPDHCol, true)
+    lvPDL := newKey(lvPDL, dLo, dLoB, "PDL", false, kPDLIn, kPDLCol, true)
+    dHi := high, dLo := low, dHiB := bar_index, dLoB := bar_index
+else
+    if na(dHi) or high > dHi
+        dHi := high, dHiB := bar_index
+    if na(dLo) or low < dLo
+        dLo := low, dLoB := bar_index
+
+if newWeek and bar_index > 0
+    lvWO  := newKey(lvWO, open, bar_index, "Weekly Open", true, kWOIn, kWOCol, false)
+    lvPWH := newKey(lvPWH, wHi, wHiB, "PWH", true, kPWHIn, kPWHCol, true)
+    lvPWL := newKey(lvPWL, wLo, wLoB, "PWL", false, kPWLIn, kPWLCol, true)
+    wHi := high, wLo := low, wHiB := bar_index, wLoB := bar_index
+else
+    if na(wHi) or high > wHi
+        wHi := high, wHiB := bar_index
+    if na(wLo) or low < wLo
+        wLo := low, wLoB := bar_index
+
+if newMonth and bar_index > 0
+    lvMO  := newKey(lvMO, open, bar_index, "Monthly Open", true, kMOIn, kMOCol, false)
+    lvPMH := newKey(lvPMH, mHi, mHiB, "PMH", true, kPMHIn, kPMHCol, true)
+    lvPML := newKey(lvPML, mLo, mLoB, "PML", false, kPMLIn, kPMLCol, true)
+    mHi := high, mLo := low, mHiB := bar_index, mLoB := bar_index
+else
+    if na(mHi) or high > mHi
+        mHi := high, mHiB := bar_index
+    if na(mLo) or low < mLo
+        mLo := low, mLoB := bar_index
+
+int  nyDay    = dayofmonth(time, tzIn)
+int  nyTod    = hour(time, tzIn) * 60 + minute(time, tzIn)
+bool newNyDay = nyDay != nyDay[1]
+if intraday and newNyDay and bar_index > 0
+    lvMid := newKey(lvMid, open, bar_index, "Midnight Open", true, kMidIn, kMidCol, false)
+if intraday and nyTod >= 510 and (nz(nyTod[1]) < 510 or newNyDay) and bar_index > 0
+    lv830 := newKey(lv830, open, bar_index, "08:30 Open", true, k830In, k830Col, false)
+
+if bar_index >= 2 and high[1] > high[2] and high[1] > high
+    addLevel(liqHighs, Level.new(price = high[1], bar = bar_index - 1, name = "Swing High", kind = 0, isHigh = true))
+if bar_index >= 2 and low[1] < low[2] and low[1] < low
+    addLevel(liqLows, Level.new(price = low[1], bar = bar_index - 1, name = "Swing Low", kind = 0, isHigh = false))
+
+scanSweeps(array<Level> arr, bool isHigh) =>
+    int    n     = 0
+    string names = ""
+    for lv in arr
+        if not lv.swept and not lv.dead and lv.bar < bar_index and (isHigh ? high > lv.price : low < lv.price)
+            lv.swept    := true
+            lv.sweptBar := bar_index
+            if lv.kind == 2
+                line.delete(lv.ln)
+                label.delete(lv.lb)
+            else if lv.kind == 1 and sessHideSwIn
+                label.delete(lv.lb)
+            if kindAllowed(lv.kind)
+                n     += 1
+                names := names + (names == "" ? "" : ", ") + lv.name
+    [n, names]
+
+[nBsl, bslNames] = scanSweeps(liqHighs, true)
+[nSsl, sslNames] = scanSweeps(liqLows, false)
+if nBsl > 0
+    pushAlert(alSweepIn, "Buyside Liquidity Sweep: " + bslNames)
+if nSsl > 0
+    pushAlert(alSweepIn, "Sellside Liquidity Sweep: " + sslNames)
+
+collectHtf(bool ok, bool chg, bool bn, float bTop, float bBot, bool sn, float sTop, float sBot, int t0, string lbl, color cBull, color cBear) =>
+    if ok and chg
+        if bn and bTop > bBot
+            htfFvgs.push(HFvg.new(bTop, bBot, true, lbl, t0, cBull))
+        if sn and sTop > sBot
+            htfFvgs.push(HFvg.new(sTop, sBot, false, lbl, t0, cBear))
+
+collectHtf(aOk, aChg, aBn, aBt, aBb, aSn, aSt, aSb, aT, aLbl, hfABull, hfABear)
+collectHtf(bOk, bChg, bBn, bBt, bBb, bSn, bSt, bSb, bT, bLbl, hfBBull, hfBBear)
+collectHtf(cOk, cChg, cBn, cBt, cBb, cSn, cSt, cSb, cT, cLbl, hfCBull, hfCBear)
+while htfFvgs.size() > MAX_HTF
+    htfFvgs.shift()
+if htfFvgs.size() > 0
+    for i = htfFvgs.size() - 1 to 0
+        HFvg f = htfFvgs.get(i)
+        if f.bull ? close < f.bot : close > f.top
+            htfFvgs.remove(i)
+
+int curSess = in1 ? 0 : in2 ? 1 : in3 ? 2 : in4 ? 3 : in5 ? 4 : -1
+var int  prevSess   = -1
+var int  recIdx     = -1
+var bool recSwHigh  = false
+var bool recSwLow   = false
+var int  recLast    = 0
+var int  autoBias   = 0
+var float refSessHi = na
+var float refSessLo = na
+if curSess != -1 and curSess != prevSess
+    if recIdx != -1
+        autoBias := recSwHigh or recSwLow ? (recLast == 1 ? -1 : 1) : 0
+    recIdx    := curSess
+    recSwHigh := false
+    recSwLow  := false
+    recLast   := 0
+    refSessHi := lastSessHi
+    refSessLo := lastSessLo
+prevSess := curSess
+if curSess != -1
+    bool dolHigh = (not na(h1PH) and high > h1PH) or (not na(h4PH) and high > h4PH) or (not na(refSessHi) and high > refSessHi) or (not na(lvPDH) and high > lvPDH.price)
+    bool dolLow  = (not na(h1PL) and low < h1PL) or (not na(h4PL) and low < h4PL) or (not na(refSessLo) and low < refSessLo) or (not na(lvPDL) and low < lvPDL.price)
+    if dolHigh and not recSwHigh and not recSwLow and autoBias == 0
+        autoBias := -1
+    else if dolLow and not recSwHigh and not recSwLow and autoBias == 0
+        autoBias := 1
+    if dolHigh
+        recSwHigh := true
+        recLast   := 1
+    if dolLow
+        recSwLow := true
+        recLast  := -1
+bool allowLong  = biasModeIn == "Manual" ? manualBiasIn != "Bearish" : autoBias == 1
+bool allowShort = biasModeIn == "Manual" ? manualBiasIn != "Bullish" : autoBias == -1
+
+var Setup setL = Setup.new()
+var Setup setS = Setup.new()
+
+if nSsl > 0
+    if setL.state == 0
+        setL.count    := nSsl
+        setL.names    := sslNames
+        setL.tap      := false
+        setL.tapTf    := ""
+        setL.sweepBar := bar_index
+    else
+        setL.count += nSsl
+        setL.names := setL.names + ", " + sslNames
+    if setL.state == 0 or low <= setL.ext
+        setL.ext      := low
+        setL.extMid   := hl2
+        setL.extBar   := bar_index
+        setL.legStart := legOrigin(true)
+    setL.state := 1
+else if setL.state >= 1 and low < setL.ext
+    setL.ext      := low
+    setL.extMid   := hl2
+    setL.extBar   := bar_index
+    setL.legStart := legOrigin(true)
+    setL.state    := 1
+
+if nBsl > 0
+    if setS.state == 0
+        setS.count    := nBsl
+        setS.names    := bslNames
+        setS.tap      := false
+        setS.tapTf    := ""
+        setS.sweepBar := bar_index
+    else
+        setS.count += nBsl
+        setS.names := setS.names + ", " + bslNames
+    if setS.state == 0 or high >= setS.ext
+        setS.ext      := high
+        setS.extMid   := hl2
+        setS.extBar   := bar_index
+        setS.legStart := legOrigin(false)
+    setS.state := 1
+else if setS.state >= 1 and high > setS.ext
+    setS.ext      := high
+    setS.extMid   := hl2
+    setS.extBar   := bar_index
+    setS.legStart := legOrigin(false)
+    setS.state    := 1
+
+if setL.state == 1 and bar_index - setL.extBar <= TAP_WINDOW and not setL.tap
+    [t, tf] = tapHtf(true)
+    if t
+        setL.tap   := true
+        setL.tapTf := tf
+if setS.state == 1 and bar_index - setS.extBar <= TAP_WINDOW and not setS.tap
+    [t, tf] = tapHtf(false)
+    if t
+        setS.tap   := true
+        setS.tapTf := tf
+
+float body    = math.abs(close - open)
+float rng     = high - low
+bool  strong  = body >= V_BODY_ATR * atr and rng > 0 and body / rng >= V_BODY_PCT
+if setL.state == 1 and bar_index > setL.extBar
+    if bar_index - setL.extBar <= V_WINDOW and close > open and strong and close > setL.extMid
+        setL.state := 2
+    else if bar_index - setL.extBar > V_WINDOW
+        setL.state := 0
+if setS.state == 1 and bar_index > setS.extBar
+    if bar_index - setS.extBar <= V_WINDOW and close < open and strong and close < setS.extMid
+        setS.state := 2
+    else if bar_index - setS.extBar > V_WINDOW
+        setS.state := 0
+if setL.state == 2 and bar_index - setL.extBar > SETUP_MAX
+    setL.state := 0
+if setS.state == 2 and bar_index - setS.extBar > SETUP_MAX
+    setS.state := 0
+
+if bar_index >= 2 and low > high[2] and (low - high[2]) >= sensIn * atr
+    bullFvgs.push(Fvg.new(top = low, bot = high[2], bar = bar_index - 1))
+if bar_index >= 2 and high < low[2] and (low[2] - high) >= sensIn * atr
+    bearFvgs.push(Fvg.new(top = low[2], bot = high, bar = bar_index - 1))
+while bullFvgs.size() > MAX_FVG
+    bullFvgs.shift()
+while bearFvgs.size() > MAX_FVG
+    bearFvgs.shift()
+
+var array<int> statWin = array.new<int>(5, 0)
+var array<int> statTot = array.new<int>(5, 0)
+var Trade tr = na
+
+recordStat(Trade t, bool win) =>
+    int w = win ? 1 : 0
+    statWin.set(t.rank, statWin.get(t.rank) + w)
+    statTot.set(t.rank, statTot.get(t.rank) + 1)
+    int d = t.long ? 3 : 4
+    statWin.set(d, statWin.get(d) + w)
+    statTot.set(d, statTot.get(d) + 1)
+
+winRate(int i) =>
+    int t = statTot.get(i)
+    t > 0 ? str.tostring(statWin.get(i) * 100.0 / t, "#.##") + "%" : "-"
+
+if not na(tr)
+    if tr.open and bar_index > tr.bar
+        bool   L    = tr.long
+        string side = L ? "Long" : "Short"
+        if L ? low <= tr.curSL : high >= tr.curSL
+            if not tr.beHit
+                recordStat(tr, false)
+            string res = tr.tp1Hit ? "🟢TP 1" : tr.beHit ? "🔹BE" : "🔴SL"
+            tr.sig.set_tooltip(tr.tip + "\n\nResult: " + res)
+            pushAlert(alSLIn, side + " Stop-Loss Hit @ " + fmt(tr.curSL))
+            closeTrade(tr)
+        else
+            if not tr.beHit and (L ? high >= tr.be : low <= tr.be)
+                tr.beHit := true
+                recordStat(tr, true)
+                tr.bB.set_text(lvlText("BE", tr.be, tr.entry, bePxIn, true))
+                tr.sig.set_tooltip(tr.tip + "\n\nResult: 🔹BE")
+                pushAlert(alBEIn, side + " Breakeven Hit @ " + fmt(tr.be))
+                if trailingIn
+                    tr.curSL := tr.entry
+                    tr.lS.set_y1(tr.entry)
+                    tr.lS.set_y2(tr.entry)
+                    tr.bS.set_y(tr.entry)
+                    tr.bS.set_text(lvlText("SL", tr.entry, tr.entry, slPxIn, false))
+                    pushAlert(alTrEntIn, side + " Trailing Stop-Loss moved to Entry @ " + fmt(tr.entry))
+            if not tr.tp1Hit and (L ? high >= tr.tp1 : low <= tr.tp1)
+                tr.tp1Hit := true
+                tr.b1.set_text(lvlText("TP 1", tr.tp1, tr.entry, tpPxIn, true))
+                tr.sig.set_tooltip(tr.tip + "\n\nResult: 🟢TP 1")
+                pushAlert(alTP1In, side + " TP1 Hit @ " + fmt(tr.tp1))
+                if trailingIn
+                    tr.curSL := tr.be
+                    tr.lS.set_y1(tr.be)
+                    tr.lS.set_y2(tr.be)
+                    tr.bS.set_y(tr.be)
+                    tr.bS.set_text(lvlText("SL", tr.be, tr.entry, slPxIn, false))
+                    pushAlert(alTrBEIn, side + " Trailing Stop-Loss moved to BE @ " + fmt(tr.be))
+            if L ? high >= tr.tp2 : low <= tr.tp2
+                tr.sig.set_tooltip(tr.tip + "\n\nResult: 🟢TP 2")
+                pushAlert(alTP2In, side + " TP2 Hit @ " + fmt(tr.tp2))
+                closeTrade(tr)
+
+var array<label> sigLabels = array.new<label>()
+var array<box>   ifvgBoxes = array.new<box>()
+var array<line>  ifvgMids  = array.new<line>()
+var int lastIfvgBar = na
+int minRank = ratingMinIn == "A++" ? 2 : ratingMinIn == "A+" ? 1 : 0
+
+fireSignal(bool long, Setup st, Fvg f, float sl, float be, float tp1, float tp2, int rank) =>
+    string rating = rank == 2 ? "A++" : rank == 1 ? "A+" : "A"
+    color  col    = long ? longCol : shortCol
+    string tip    = "Setup Rating: " + rating + "\nDirection: " + (long ? "Long" : "Short") + "\nLiquidity Swept: " + st.names + "\nMulti-Liquidity Sweep: " + (st.count >= 2 ? "Yes" : "No") + "\nHTF FVG Tap: " + (st.tap ? "Yes (" + st.tapTf + ")" : "No") + "\nInside Macro: " + (inMacro ? "Yes" : "No") + "\n\nEntry: " + fmt(close) + "\nSL: " + fmt(sl) + "\nBE: " + fmt(be) + "\nTP 1: " + fmt(tp1) + "\nTP 2: " + fmt(tp2)
+    label sig = label.new(bar_index, long ? low : high, rating, style = long ? label.style_label_up : label.style_label_down, color = col, textcolor = long ? longTxtCol : shortTxtCol, size = txtSize(long ? longSizeIn : shortSizeIn), tooltip = tip)
+    sigLabels.push(sig)
+    while sigLabels.size() > MAX_SIG
+        label.delete(sigLabels.shift())
+    Trade t = Trade.new(long = long, bar = bar_index, rating = rating, rank = rank, entry = close, sl = sl, be = be, tp1 = tp1, tp2 = tp2, curSL = sl, tip = tip, sig = sig)
+    if entryLnIn
+        t.lE := mkLine(close, entryCol)
+        t.bE := mkLbl(lvlText("Entry", close, close, entryPxIn, false), close, entryCol)
+    if slLnIn
+        t.lS := mkLine(sl, slCol)
+        t.bS := mkLbl(lvlText("SL", sl, close, slPxIn, false), sl, slCol)
+    if beLnIn
+        t.lB := mkLine(be, beCol)
+        t.bB := mkLbl(lvlText("BE", be, close, bePxIn, false), be, beCol)
+    if tpLnIn
+        t.l1 := mkLine(tp1, tp1Col)
+        t.b1 := mkLbl(lvlText("TP 1", tp1, close, tpPxIn, false), tp1, tp1Col)
+        t.l2 := mkLine(tp2, tp2Col)
+        t.b2 := mkLbl(lvlText("TP 2", tp2, close, tpPxIn, false), tp2, tp2Col)
+    if ifShowIn
+        color ic = long ? ifBullCol : ifBearCol
+        ifvgBoxes.push(box.new(f.bar - 1, f.top, bar_index, f.bot, border_color = color.new(ic, 40), bgcolor = ic))
+        if ifMidIn
+            ifvgMids.push(line.new(f.bar - 1, (f.top + f.bot) / 2, bar_index, (f.top + f.bot) / 2, color = ifMidCol, style = lineStyle(ifMidStyle)))
+        while ifvgBoxes.size() > MAX_IFVG
+            box.delete(ifvgBoxes.shift())
+        while ifvgMids.size() > MAX_IFVG
+            line.delete(ifvgMids.shift())
+    pushAlert(long ? alLongIn : alShortIn, (long ? "Long" : "Short") + " Signal (" + rating + ") | Entry " + fmt(close) + " | SL " + fmt(sl) + " | BE " + fmt(be) + " | TP1 " + fmt(tp1) + " | TP2 " + fmt(tp2))
+    t
+
+evalSetup(bool long, Setup st) =>
+    Trade out = na
+    bool  ifvg = false
+    Fvg f = findIfvg(long ? bearFvgs : bullFvgs, long, st.legStart, st.extBar)
+    if not na(f)
+        ifvg := true
+        [sl, be, tp1, tp2] = tradeLevels(long, close, st.ext)
+        float risk = math.abs(close - sl)
+        float rr   = risk > 0 ? math.abs(tp2 - close) / risk : 0.0
+        int   conf = (st.tap ? 1 : 0) + (st.count >= 2 ? 1 : 0) + (inMacro ? 1 : 0)
+        int   rank = math.min(conf, 2)
+        bool  dirOk = long ? (allowLong and showLongIn) : (allowShort and showShortIn)
+        bool  slOk  = long ? sl < close : sl > close
+        if dirOk and inWindow and (not useMacroIn or inMacro) and risk > 0 and slOk and rr >= minRRIn and rank >= minRank
+            out := fireSignal(long, st, f, sl, be, tp1, tp2, rank)
+    [out, ifvg]
+
+if setL.state == 2
+    [t, ifvg] = evalSetup(true, setL)
+    if ifvg
+        lastIfvgBar := bar_index
+    if not na(t)
+        if not na(tr)
+            closeTrade(tr)
+        tr := t
+        setL.state := 0
+if setS.state == 2
+    [t, ifvg] = evalSetup(false, setS)
+    if ifvg
+        lastIfvgBar := bar_index
+    if not na(t)
+        if not na(tr)
+            closeTrade(tr)
+        tr := t
+        setS.state := 0
+
+for f in bearFvgs
+    if not f.inverted and close > f.top
+        f.inverted := true
+for f in bullFvgs
+    if not f.inverted and close < f.bot
+        f.inverted := true
+
+float pHc = ta.pivothigh(high, smtLenIn, smtLenIn)
+float pLc = ta.pivotlow(low, smtLenIn, smtLenIn)
+float pHo = ta.pivothigh(smtH, smtLenIn, smtLenIn)
+float pLo = ta.pivotlow(smtL, smtLenIn, smtLenIn)
+var float oH1 = na, var int oH1B = na, var float oH0 = na, var int oH0B = na
+var float oL1 = na, var int oL1B = na, var float oL0 = na, var int oL0B = na
+var float cHp = na, var int cHpB = na
+var float cLp = na, var int cLpB = na
+var array<line>  smtLines  = array.new<line>()
+var array<label> smtLabels = array.new<label>()
+var int smtBar = na
+
+if not na(pHo)
+    oH0 := oH1, oH0B := oH1B
+    oH1 := pHo, oH1B := bar_index - smtLenIn
+if not na(pLo)
+    oL0 := oL1, oL0B := oL1B
+    oL1 := pLo, oL1B := bar_index - smtLenIn
+
+if smtIn and not na(pHc)
+    int pb = bar_index - smtLenIn
+    if not na(cHp) and not na(oH1) and not na(oH0) and math.abs(oH1B - pb) <= smtDivLenIn and math.abs(oH0B - cHpB) <= smtDivLenIn
+        if (pHc > cHp) != (oH1 > oH0)
+            smtLines.push(line.new(cHpB, cHp, pb, pHc, color = smtCol, style = line.style_dashed))
+            smtLabels.push(label.new(int((cHpB + pb) / 2), math.max(cHp, pHc), "SMT", style = label.style_label_down, color = color.new(#000000, 100), textcolor = smtCol, size = size.tiny))
+            smtBar := bar_index
+            pushAlert(alSmtIn, "Bearish SMT Divergence vs " + smtTickerIn)
+    cHp  := pHc
+    cHpB := pb
+if smtIn and not na(pLc)
+    int pb = bar_index - smtLenIn
+    if not na(cLp) and not na(oL1) and not na(oL0) and math.abs(oL1B - pb) <= smtDivLenIn and math.abs(oL0B - cLpB) <= smtDivLenIn
+        if (pLc < cLp) != (oL1 < oL0)
+            smtLines.push(line.new(cLpB, cLp, pb, pLc, color = smtCol, style = line.style_dashed))
+            smtLabels.push(label.new(int((cLpB + pb) / 2), math.min(cLp, pLc), "SMT", style = label.style_label_up, color = color.new(#000000, 100), textcolor = smtCol, size = size.tiny))
+            smtBar := bar_index
+            pushAlert(alSmtIn, "Bullish SMT Divergence vs " + smtTickerIn)
+    cLp  := pLc
+    cLpB := pb
+while smtLines.size() > smtLastIn
+    line.delete(smtLines.shift())
+while smtLabels.size() > smtLastIn
+    label.delete(smtLabels.shift())
+
+var array<box>   macBoxes  = array.new<box>()
+var array<label> macLabels = array.new<label>()
+var array<line>  macLines  = array.new<line>()
+
+for [i, m] in macros
+    bool nowIn = macIn.get(i) and m.on
+    if nowIn and not m.active
+        m.active    := true
+        m.hi        := high
+        m.lo        := low
+        m.startBar  := bar_index
+        m.startHigh := high
+        m.bx        := na
+        m.lb        := na
+        if macVis and macZonesIn
+            m.bx := box.new(bar_index, high, bar_index, low, border_color = color.new(m.col, 100), bgcolor = m.col)
+            macBoxes.push(m.bx)
+        if macVis and macLblIn
+            m.lb := label.new(bar_index, high, m.title + " (" + timeTxt(m.sess) + ")", style = label.style_label_down, color = color.new(#000000, 100), textcolor = macLblCol, size = txtSize(macLblSizeIn))
+            macLabels.push(m.lb)
+    else if nowIn and m.active
+        m.hi := math.max(m.hi, high)
+        m.lo := math.min(m.lo, low)
+        if not na(m.bx)
+            m.bx.set_top(m.hi)
+            m.bx.set_bottom(m.lo)
+            m.bx.set_right(bar_index)
+        if not na(m.lb)
+            m.lb.set_y(m.hi)
+    else if not nowIn and m.active
+        m.active := false
+        if macVis and macLinesIn
+            int   eb = bar_index - 1
+            color lc = color.new(m.col, 0)
+            macLines.push(line.new(m.startBar, m.lo, m.startBar, m.hi, color = lc, style = lineStyle(macSEStyle)))
+            macLines.push(line.new(eb, m.lo, eb, m.hi, color = lc, style = lineStyle(macSEStyle)))
+            macLines.push(line.new(m.startBar, m.startHigh, eb, high[1], color = lc, style = lineStyle(macLineStyle)))
+while macBoxes.size() > MAX_MAC
+    box.delete(macBoxes.shift())
+while macLabels.size() > MAX_MAC
+    label.delete(macLabels.shift())
+while macLines.size() > MAX_MAC * 3
+    line.delete(macLines.shift())
+
+var Gap ndog = na
+var Gap nwog = na
+
+if ndogIn
+    if newDay and bar_index > 0
+        delGap(ndog)
+        ndog := na
+        if open != close[1]
+            ndog := newGap(math.max(open, close[1]), math.min(open, close[1]), open > close[1], ndogBull, ndogBear, ndogMidIn, ndogLblIn, "NDOG")
+    else if not na(ndog)
+        if updGap(ndog)
+            delGap(ndog)
+            ndog := na
+if nwogIn
+    if newWeek and bar_index > 0
+        delGap(nwog)
+        nwog := na
+        if open != close[1]
+            nwog := newGap(math.max(open, close[1]), math.min(open, close[1]), open > close[1], nwogBull, nwogBear, nwogMidIn, nwogLblIn, "NWOG")
+    else if not na(nwog)
+        if updGap(nwog)
+            delGap(nwog)
+            nwog := na
+
+var array<line>  swDraw  = array.new<line>()
+var array<box>   hfBoxes = array.new<box>()
+var array<line>  hfMids  = array.new<line>()
+
+if barstate.islast
+    for lv in array.from(lvDO, lvPDH, lvPDL, lvWO, lvPWH, lvPWL, lvMO, lvPMH, lvPML, lvMid, lv830)
+        if not na(lv)
+            if not lv.dead and not lv.swept and not na(lv.ln)
+                int x2 = bar_index + (kExtIn ? kExtBarsIn : 0)
+                lv.ln.set_x2(x2)
+                if not na(lv.lb) and kLblPosIn == "Right"
+                    lv.lb.set_x(x2)
+
+    while swDraw.size() > 0
+        line.delete(swDraw.shift())
+    if swShowIn
+        for side = 0 to 1
+            array<Level> src  = side == 0 ? liqHighs : liqLows
+            array<int>   used = array.new<int>()
+            for k = 1 to swNearestIn
+                int   bi = -1
+                float bd = na
+                for [j, lv] in src
+                    if lv.kind == 0 and not used.includes(j)
+                        float d = math.abs(lv.price - close)
+                        if na(bd) or d < bd
+                            bd := d
+                            bi := j
+                if bi >= 0
+                    used.push(bi)
+                    Level lv = src.get(bi)
+                    swDraw.push(line.new(lv.bar, lv.price, lv.swept ? lv.sweptBar : bar_index, lv.price, color = lv.swept ? swSweptCol : swActiveCol, width = 1))
+
+    while hfBoxes.size() > 0
+        box.delete(hfBoxes.shift())
+    while hfMids.size() > 0
+        line.delete(hfMids.shift())
+    if hfPlotIn and htfFvgs.size() > 0
+        int rightT = time + 10 * timeframe.in_seconds() * 1000
+        for side = 0 to 1
+            array<int> used = array.new<int>()
+            for k = 1 to hfNearestIn
+                int   bi = -1
+                float bd = na
+                for [j, f] in htfFvgs
+                    if f.bull == (side == 0) and not used.includes(j)
+                        float d = math.abs((f.top + f.bot) / 2 - close)
+                        if na(bd) or d < bd
+                            bd := d
+                            bi := j
+                if bi >= 0
+                    used.push(bi)
+                    HFvg f = htfFvgs.get(bi)
+                    hfBoxes.push(box.new(f.t, f.top, rightT, f.bot, xloc = xloc.bar_time, border_color = color.new(f.col, 100), bgcolor = f.col, text = hfLblIn ? f.tfLbl + " FVG" : "", text_color = hfLblCol, text_size = size.small, text_halign = text.align_right, text_valign = text.align_center))
+                    if hfMidIn
+                        hfMids.push(line.new(f.t, (f.top + f.bot) / 2, rightT, (f.top + f.bot) / 2, xloc = xloc.bar_time, color = hfMidCol, style = lineStyle(hfMidStyle)))
+
+dbPos = switch dbPosIn
+    "Middle Right"  => position.middle_right
+    "Bottom Right"  => position.bottom_right
+    "Top Left"      => position.top_left
+    "Middle Left"   => position.middle_left
+    "Bottom Left"   => position.bottom_left
+    "Top Center"    => position.top_center
+    "Bottom Center" => position.bottom_center
+    => position.top_right
+
+dbSize = switch dbSizeIn
+    "Tiny"   => size.tiny
+    "Normal" => size.normal
+    "Large"  => size.large
+    => size.small
+
+bool  dark    = dbThemeIn == "Dark"
+color hdrBg   = dark ? #363A45 : #D1D4DC
+color cellBg  = dark ? #131722 : #FFFFFF
+color txtCol  = dark ? #FFFFFF : #131722
+color accent  = #089981
+
+var table dash = table.new(dbPos, 2, 24, bgcolor = cellBg, frame_color = dark ? #000000 : #B2B5BE, frame_width = 1, border_color = dark ? #000000 : #B2B5BE, border_width = 1)
+
+dbCell(int r, string k, string v, color bg, color kc, color vc) =>
+    table.cell(dash, 0, r, k, text_color = kc, text_size = dbSize, bgcolor = bg)
+    table.cell(dash, 1, r, v, text_color = vc, text_size = dbSize, bgcolor = bg)
+
+if barstate.islast and dbIn
+    table.clear(dash, 0, 0, 1, 23)
+    bool  hasTr  = not na(tr)
+    color rCol   = hasTr ? (tr.long ? longCol : shortCol) : txtCol
+    int   curDir = setL.state > 0 and setS.state > 0 ? (setL.sweepBar >= setS.sweepBar ? 1 : -1) : setL.state > 0 ? 1 : setS.state > 0 ? -1 : hasTr ? (tr.long ? 1 : -1) : 0
+    bool  recent = hasTr and tr.open
+    bool  swOk   = (curDir == 1 and setL.state >= 1) or (curDir == -1 and setS.state >= 1) or recent
+    bool  vOk    = (curDir == 1 and setL.state >= 2) or (curDir == -1 and setS.state >= 2) or recent
+    bool  ifOk   = not na(lastIfvgBar) and bar_index - lastIfvgBar <= STATE_BARS
+    bool  htfOk  = insideHtf() or (curDir == 1 and setL.state >= 1 and setL.tap) or (curDir == -1 and setS.state >= 1 and setS.tap)
+    bool  dolUp  = false
+    bool  dolDn  = false
+    for lv in liqHighs
+        if not lv.swept and not lv.dead and lv.price > close
+            dolUp := true
+            break
+    for lv in liqLows
+        if not lv.swept and not lv.dead and lv.price < close
+            dolDn := true
+            break
+    bool   dolOk = curDir == 1 ? dolUp : curDir == -1 ? dolDn : (dolUp or dolDn)
+    bool   smtOk = not na(smtBar) and bar_index - smtBar <= STATE_BARS
+    int    bv    = biasModeIn == "Manual" ? (manualBiasIn == "Bullish" ? 1 : manualBiasIn == "Bearish" ? -1 : 0) : autoBias
+    string biasT = bv == 1 ? "🐂 Bullish" : bv == -1 ? "🐻 Bearish" : biasModeIn == "Manual" ? "Both" : "-"
+    int r = 0
+    if dbRatingIn
+        dbCell(r, "Setup Rating", hasTr ? tr.rating : "-", hdrBg, txtCol, rCol)
+        r += 1
+    if dbEntryIn
+        dbCell(r, "Entry", hasTr ? fmt(tr.entry) : "-", cellBg, txtCol, txtCol)
+        r += 1
+    if dbSLIn
+        dbCell(r, "Stop-Loss", hasTr ? fmt(tr.curSL) : "-", cellBg, txtCol, txtCol)
+        r += 1
+    if dbBEIn
+        dbCell(r, "BE", hasTr ? fmt(tr.be) : "-", cellBg, txtCol, txtCol)
+        r += 1
+    if dbTP1In
+        dbCell(r, "TP 1", hasTr ? fmt(tr.tp1) : "-", cellBg, txtCol, txtCol)
+        r += 1
+    if dbTP2In
+        dbCell(r, "TP 2", hasTr ? fmt(tr.tp2) : "-", cellBg, txtCol, txtCol)
+        r += 1
+    dbCell(r, "Checklist", "State", hdrBg, txtCol, accent)
+    r += 1
+    if dbBiasIn
+        dbCell(r, "Bias", biasT, cellBg, txtCol, txtCol)
+        r += 1
+    if dbSweepIn
+        dbCell(r, "Liquidity Sweep", swOk ? CHECK : CROSS, cellBg, txtCol, txtCol)
+        r += 1
+    if dbHtfIn
+        dbCell(r, "HTF FVG", htfOk ? CHECK : CROSS, cellBg, txtCol, txtCol)
+        r += 1
+    if dbVIn
+        dbCell(r, "V Shape Recovery", vOk ? CHECK : CROSS, cellBg, txtCol, txtCol)
+        r += 1
+    if dbIfvgIn
+        dbCell(r, "Inversion FVG", ifOk ? CHECK : CROSS, cellBg, txtCol, txtCol)
+        r += 1
+    if dbDolIn
+        dbCell(r, "Clear Opposite DOL", dolOk ? CHECK : CROSS, cellBg, txtCol, txtCol)
+        r += 1
+    if dbSmtIn
+        dbCell(r, "SMT Divergence", smtOk ? CHECK : CROSS, cellBg, txtCol, txtCol)
+        r += 1
+    if dbStatsIn
+        dbCell(r, "Trade Stats", "", hdrBg, txtCol, txtCol)
+        r += 1
+        dbCell(r, "A Setups", winRate(0), cellBg, txtCol, dbStatsCol)
+        r += 1
+        dbCell(r, "A+ Setups", winRate(1), cellBg, txtCol, dbStatsCol)
+        r += 1
+        dbCell(r, "A++ Setups", winRate(2), cellBg, txtCol, dbStatsCol)
+        r += 1
+        dbCell(r, "Long Trades", winRate(3), cellBg, txtCol, dbStatsCol)
+        r += 1
+        dbCell(r, "Short Trades", winRate(4), cellBg, txtCol, dbStatsCol)
+        r += 1
+        dbCell(r, "Total Trades", str.tostring(statTot.get(3) + statTot.get(4)), cellBg, txtCol, dbStatsCol)
+
+if alertList.size() > 0
+    alert(alertList.join("\n"), alert.freq_once_per_bar_close)
